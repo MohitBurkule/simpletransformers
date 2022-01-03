@@ -34,7 +34,7 @@ from transformers import (
     XLMTokenizer,
     XLNetConfig,
     XLNetTokenizer,
-    AutoModelForMultiLabelSequenceClassification,
+    AutoModelSequenceClassification,
     AutoConfig,
     AutoTokenizer
 )
@@ -193,7 +193,7 @@ class MultiLabelClassificationModel(ClassificationModel):
         if not use_cuda:
             self.args.fp16 = False
         
-        config_class, model_class, tokenizer_class = MODEL_CLASSES.get(model_type,(AutoConfig.from_pretrained(model_name), AutoModelForMultiLabelSequenceClassification.from_pretrained(model_name),AutoTokenizer.from_pretrained(model_name)))
+        config_class, model_class, tokenizer_class = MODEL_CLASSES.get(model_type,(AutoConfig.from_pretrained(model_name), AutoModelSequenceClassification.from_pretrained(model_name),AutoTokenizer.from_pretrained(model_name)))
         if num_labels:
             self.config = config_class.from_pretrained(
                 model_name, num_labels=num_labels, **self.args.config
