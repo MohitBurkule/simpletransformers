@@ -17,12 +17,16 @@
 
 from __future__ import absolute_import, division, print_function
 import enum
-import collections
 import linecache
 import logging
 import os
 from io import open
 from multiprocessing import Pool, cpu_count
+
+try:
+    from collections import Iterable, Mapping
+except ImportError:
+    from collections.abc import Iterable, Mapping
 
 import pandas as pd
 import torch
@@ -472,7 +476,6 @@ def convert_examples_to_features(
                     p.imap(
                         convert_examples_with_multiprocessing,
                         examples,
-                        chunksize=chunksize,
                     ),
                     total=len(examples),
                     disable=silent,
@@ -681,7 +684,7 @@ class LazyNERDataset(Dataset):
     def __init__(self, data_file, tokenizer, args):
         self.data_file = data_file
         self.lazy_loading_start_line = (
-            args.lazy_loading_start_line if args.lazy_loading_start_line else 0
+            args.lazy_loading_start_line if args.lazy_loading_start_line else 1
         )
         self.example_lines, self.num_entries = self._get_examples(
             self.data_file, self.lazy_loading_start_line
@@ -754,11 +757,11 @@ class LazyNERDataset(Dataset):
 
 def flatten_results(results, parent_key="", sep="/"):
     out = []
-    if isinstance(results, collections.Mapping):
+    if isinstance(results, Mapping):
         for key, value in results.items():
             pkey = parent_key + sep + str(key) if parent_key else str(key)
             out.extend(flatten_results(value, parent_key=pkey).items())
-    elif isinstance(results, collections.Iterable):
+    elif isinstance(results, Iterable):
         for key, value in enumerate(results):
             pkey = parent_key + sep + str(key) if parent_key else str(key)
             out.extend(flatten_results(value, parent_key=pkey).items())

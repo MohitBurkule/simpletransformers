@@ -25,7 +25,8 @@ from transformers.optimization import (
     get_cosine_with_hard_restarts_schedule_with_warmup,
     get_polynomial_decay_schedule_with_warmup,
 )
-from transformers.optimization import AdamW, Adafactor
+from torch.optim import AdamW
+from transformers.optimization import Adafactor
 from transformers import (
     AutoConfig,
     AutoModel,
@@ -579,6 +580,7 @@ class Seq2SeqModel:
                 optimizer_grouped_parameters,
                 lr=args.learning_rate,
                 eps=args.adam_epsilon,
+                betas=args.adam_betas,
             )
         elif args.optimizer == "Adafactor":
             optimizer = Adafactor(
@@ -1551,6 +1553,7 @@ class Seq2SeqModel:
                 if self.args.model_type in [
                     "bart",
                     "mbart",
+                    "marian",
                     "rag-token",
                     "rag-sequence",
                 ]:
@@ -1615,19 +1618,15 @@ class Seq2SeqModel:
         device = self.device
         if self.args.model_type in ["bart", "marian"]:
             pad_token_id = self.encoder_tokenizer.pad_token_id
-            source_ids, source_mask, y = (
+            source_ids, source_mask, labels = (
                 batch["source_ids"],
                 batch["source_mask"],
                 batch["target_ids"],
             )
-            y_ids = y[:, :-1].contiguous()
-            labels = y[:, 1:].clone()
-            labels[y[:, 1:] == pad_token_id] = -100
 
             inputs = {
                 "input_ids": source_ids.to(device),
                 "attention_mask": source_mask.to(device),
-                "decoder_input_ids": y_ids.to(device),
                 "labels": labels.to(device),
             }
         elif self.args.model_type in ["mbart"]:

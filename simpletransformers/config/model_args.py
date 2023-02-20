@@ -29,6 +29,7 @@ class ModelArgs:
     adafactor_relative_step: bool = True
     adafactor_scale_parameter: bool = True
     adafactor_warmup_init: bool = True
+    adam_betas: tuple = field(default_factory=lambda: (0.9, 0.999))
     adam_epsilon: float = 1e-8
     best_model_dir: str = "outputs/best_model"
     cache_dir: str = "cache_dir/"
@@ -360,7 +361,9 @@ class RetrievalArgs(Seq2SeqArgs):
 
     model_class: str = "RetrievalModel"
     context_config: dict = field(default_factory=dict)
-    embed_batch_size: int = 16
+    ddp_training: bool = False
+    embed_batch_size: int = 64
+    faiss_index_type: str = "IndexFlatIP"
     hard_negatives: bool = False
     include_title: bool = True
     query_config: dict = field(default_factory=dict)
@@ -368,6 +371,8 @@ class RetrievalArgs(Seq2SeqArgs):
     retrieval_batch_size: int = 512
     retrieve_n_docs: int = 10
     save_passage_dataset: bool = True
+    train_context_encoder: bool = True
+    train_query_encoder: bool = True
     use_hf_datasets: bool = True
 
 

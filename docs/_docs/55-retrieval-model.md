@@ -2,7 +2,7 @@
 title: Retrieval Model
 permalink: /docs/retrieval-model/
 excerpt: "RetrievalModel for Retrieval tasks."
-last_modified_at: 2021/11/10 16:38:53
+last_modified_at: 2022/02/25 17:17:17
 toc: true
 ---
 
@@ -96,18 +96,19 @@ model = RetrievalModel(
 
 `RetrievalModel` has the following task-specific configuration options.
 
-| Argument                    | Type    | Default | Description                                                                                                                                   |
-| --------------------------- | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| context_config                    | dict     | {}   | Configuration for the context encoder model                                                                           |
-| embed_batch_size                    | int     | 16   | Batch size to use when generating context embeddings                                                                           |
-| hard_negatives                    | bool     | False   | Whether to use hard negatives during training. `hard_negative` column must be present in training data.                                                                           |
-| include_title                    | bool     | True   | If True, the `title` column will be prepended to the passages.                                                                           |
-| query_config                    | dict     | {}   | Configuration for the query encoder model                                                                           |
-| remove_duplicates_from_additional_passages                    | bool     | False   | Whether to remove duplicate passages in additional_passages used for evaluation. Note that this can be slow.                                                                           |
-| retrieval_batch_size                    | int     | 512   | Batch size to use when retrieving documents from index                                                                          |
-| retrieve_n_docs                    | int     | 10   | Number of documents to be retrieved when doing retrieval tasks (e.g. `evaluate_model()`, `predict()`)                                                                           |
-| save_passage_dataset                    | bool     | True   | Save passage datasets (during evaluation and prediction) to disk.                                                                           |
-| use_hf_datasets                    | bool     | True   | Use Huggingface Datasets for lazy loading of data. Must be set to True for `RetrievalModel`.                                                                  |
+| Argument                                   | Type | Default         | Description                                                                                                  |
+| ------------------------------------------ | ---- | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| context_config                             | dict | {}              | Configuration for the context encoder model                                                                  |
+| embed_batch_size                           | int  | 16              | Batch size to use when generating context embeddings                                                         |
+| faiss_index_type                           | str  | `"IndexFlatIP"` | The type of FAISS index to use. `IndexFlatIP` and  `IndexHNSWFlat` are currently supported                   |
+| hard_negatives                             | bool | False           | Whether to use hard negatives during training. `hard_negative` column must be present in training data.      |
+| include_title                              | bool | True            | If True, the `title` column will be prepended to the passages.                                               |
+| query_config                               | dict | {}              | Configuration for the query encoder model                                                                    |
+| remove_duplicates_from_additional_passages | bool | False           | Whether to remove duplicate passages in additional_passages used for evaluation. Note that this can be slow. |
+| retrieval_batch_size                       | int  | 512             | Batch size to use when retrieving documents from index                                                       |
+| retrieve_n_docs                            | int  | 10              | Number of documents to be retrieved when doing retrieval tasks (e.g. `evaluate_model()`, `predict()`)        |
+| save_passage_dataset                       | bool | True            | Save passage datasets (during evaluation and prediction) to disk.                                            |
+| use_hf_datasets                            | bool | True            | Use Huggingface Datasets for lazy loading of data. Must be set to True for `RetrievalModel`.                 |
 
 
 **Note:** For configuration options common to all Simple Transformers models, please refer to the [Configuring a Simple Transformers Model section](/docs/usage/#configuring-a-simple-transformers-model).
@@ -186,7 +187,7 @@ Trains the model using 'train_data'
 * **additional_eval_passages** *(optional)* - Additional passages to be used during evaluation.
 This may be a list of passages, a pandas DataFrame with the column `passages`, or a TSV file with the column `passages`.
 
-* **kwargs** *(optional)* - Additional metrics that should be calculated. Pass in the metrics as keyword arguments *(name of metric: function to calculate metric)*. Refer to the [additional metrics](/docs/usage/#additional-evaluation-metrics) section.
+* **kwargs** *(optional)* - Additional metrics that should be calculated. Pass in the metrics as keyword arguments *(name of metric: function to calculate metric)*. Refer to the [additional metrics](/docs/tips-and-tricks/#additional-evaluation-metrics) section.
 E.g. `f1=sklearn.metrics.f1_score`.
 A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 {: .parameter-list}
@@ -251,7 +252,7 @@ This may be a list of passages, a pandas DataFrame with the column `passages`, o
 
 * **silent** *(`bool`, optional)* - If silent, tqdm progress bars will be hidden.
 
-* **kwargs** *(optional)* - Additional metrics that should be calculated. Pass in the metrics as keyword arguments *(name of metric: function to calculate metric)*. Refer to the [additional metrics](/docs/usage/#additional-evaluation-metrics) section.
+* **kwargs** *(optional)* - Additional metrics that should be calculated. Pass in the metrics as keyword arguments *(name of metric: function to calculate metric)*. Refer to the [additional metrics](/docs/tips-and-tricks/#additional-evaluation-metrics) section.
 E.g. `f1=sklearn.metrics.f1_score`.
 A metric function should take in two parameters. The first parameter will be the true labels, and the second parameter will be the predictions.
 {: .parameter-list}

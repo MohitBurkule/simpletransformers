@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.63.9] - 2022-09-18
+
+### Added
+
+- Python 3.10 support [luketudge](https://github.com/luketudge)
+
+#### Changed
+
+- Removed usage of deprecated function `batch_encode_plus` [whr778](https://github.com/whr778)
+
+## [0.63.8] - 2022-09-18
+
+### Added
+
+- Added `adam_betas` to model_args [anaconda121](https://github.com/anaconda121)
+
+### Changed
+
+- Switched to `torch.optim.AdamW` [whr778](https://github.com/whr778)
+
+### Fixed
+
+- Fixed issues with LayoutLM predictions. Updated docs. [deltaxrg](https://github.com/deltaxrg)
+- Fixed issue with loading MarianMT models [Fortune-Adekogbe](https://github.com/Fortune-Adekogbe)
+
+
+## [0.63.7] - 2022-05-29
+
+### Added
+
+- Added support for LayoutLMV2 and RemBERT [whr778](https://github.com/whr778)
+
+### Fixed
+
+- Fixed issue with ner_utils lazy_loading_start_line not being set correctly. [whr778](https://github.com/whr778)
+- Lazy loading bug fixes [sainttttt](https://github.com/sainttttt)
+- Fixed seq2seq and T5 preprocessing [MichelBartels](https://github.com/MichelBartels)
+
+## [0.63.6] - 2022-03-24
+
+### Added
+
+- Added support for ByT5 models [@djstrong](https://github.com/djstrong)
+
+### Fixed
+
+- Fixed bug in NER ONNX prediction [gaganmanku96](https://github.com/gaganmanku96)
+- Fixed bug in NER tokenization which prevented multiprocessing being used correctly [mxa4646](https://github.com/mxa4646)
+- Fixed some broken links in docs [jordimas](https://github.com/jordimas)
+
+
+## [0.63.5] - 2022-02-25
+
+### Added
+
+- Added support for selecting FAISS index type with `RetrievalModel`.
+
+## [0.63.4] - 2021-11-20
+
+### Added
+
+- Added support for individual training of context/query encoders in `RetrievalModel`.
+
+### Fixed
+
+- Fixed a bug for pre-tokenized input to ONNX models. [whr778](https://github.com/whr778)
+- BigBird bugfix where training dataset samples were being truncated at 510 token. [whr778](https://github.com/whr778)
+- Fixed bug when FP16 is not used with `RetrievalModel`. [tiena2cva](https://github.com/tiena2cva)
+- Fixed bug in auto model for `QuestionAnsweringModel`. [lekhang4497](https://github.com/lekhang4497)
+- Fixed bug where wrong predictions weren't returned in `ClassificationModel` [jinschoi](https://github.com/jinschoi)
 
 ## [0.63.0] - 2021-11-10
 
@@ -1596,7 +1666,11 @@ Model checkpoint is now saved for all epochs again.
 
 - This CHANGELOG file to hopefully serve as an evolving example of a standardized open source project CHANGELOG.
 
-[0.63.0]: https://github.com/ThilinaRajapakse/simpletransformers/compare/a3ce529...HEAD
+[0.63.8]: https://github.com/ThilinaRajapakse/simpletransformers/compare/71880c2...HEAD
+
+[0.63.6]: https://github.com/ThilinaRajapakse/simpletransformers/compare/9323c03...71880c2
+
+[0.63.0]: https://github.com/ThilinaRajapakse/simpletransformers/compare/a3ce529...9323c03
 
 [0.62.1]: https://github.com/ThilinaRajapakse/simpletransformers/compare/fe70794...a3ce529
 

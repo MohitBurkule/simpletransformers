@@ -26,8 +26,10 @@ from transformers.optimization import (
     get_cosine_with_hard_restarts_schedule_with_warmup,
     get_polynomial_decay_schedule_with_warmup,
 )
-from transformers.optimization import AdamW, Adafactor
+from torch.optim import AdamW
+from transformers.optimization import Adafactor
 from transformers.models.mt5 import MT5Config, MT5ForConditionalGeneration
+from transformers.models.byt5 import ByT5Tokenizer
 
 from simpletransformers.config.global_args import global_args
 from simpletransformers.config.model_args import T5Args
@@ -53,6 +55,7 @@ def chunks(lst, n):
 MODEL_CLASSES = {
     "t5": (T5Config, T5ForConditionalGeneration),
     "mt5": (MT5Config, MT5ForConditionalGeneration),
+    "byt5": (T5Config, T5ForConditionalGeneration),
 }
 
 
@@ -72,7 +75,7 @@ class T5Model:
         Initializes a T5Model model.
 
         Args:
-            model_type: The type of model (t5, mt5)
+            model_type: The type of model (t5, mt5, byt5)
             model_name: The exact architecture and trained weights to use. This may be a Hugging Face Transformers compatible pre-trained model, a community model, or the path to a directory containing model files.
             args (optional): Default args will be used if this parameter is not provided. If provided, it should be a dict containing the args that should be changed in the default args.
             use_cuda (optional): Use GPU if available. Setting to False will force model to use CPU only.
@@ -130,6 +133,8 @@ class T5Model:
         if isinstance(tokenizer, T5Tokenizer):
             self.tokenizer = tokenizer
             self.model.resize_token_embeddings(len(self.tokenizer))
+        elif model_type == "byt5":
+            self.tokenizer = ByT5Tokenizer.from_pretrained(model_name, truncate=True)
         else:
             self.tokenizer = T5Tokenizer.from_pretrained(model_name, truncate=True)
 
@@ -351,6 +356,7 @@ class T5Model:
                 optimizer_grouped_parameters,
                 lr=args.learning_rate,
                 eps=args.adam_epsilon,
+                betas=args.adam_betas,
             )
         elif args.optimizer == "Adafactor":
             optimizer = Adafactor(

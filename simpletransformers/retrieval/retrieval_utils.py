@@ -26,10 +26,10 @@ def load_hf_dataset(data, context_tokenizer, query_tokenizer, args, evaluate=Fal
     if isinstance(data, str):
         if data.endswith(".json"):
             dataset = load_dataset(
-                os.path.join(
-                    os.path.dirname(os.path.abspath(__file__)),
-                    "retrieval_dataset_loading_script",
-                ),
+                # os.path.join(
+                #     os.path.dirname(os.path.abspath(__file__)),
+                "retrieval_dataset_loading_script",
+                # ),
                 data_files=data,
                 hard_negatives=args.hard_negatives,
                 include_title=args.include_title,
@@ -133,7 +133,7 @@ def preprocess_batch_for_hf_dataset(dataset, context_tokenizer, query_tokenizer,
 
     if args.hard_negatives:
         try:
-            hard_negatives_inputs = query_tokenizer(
+            hard_negatives_inputs = context_tokenizer(
                 dataset["hard_negative"],
                 max_length=args.max_seq_length,
                 padding="max_length",
@@ -148,7 +148,7 @@ def preprocess_batch_for_hf_dataset(dataset, context_tokenizer, query_tokenizer,
             This may have been caused by NaN values present in the data."""
             )
             dataset["hard_negative"] = [str(p) for p in dataset["hard_negative"]]
-            hard_negatives_inputs = query_tokenizer(
+            hard_negatives_inputs = context_tokenizer(
                 dataset["hard_negative"],
                 max_length=args.max_seq_length,
                 padding="max_length",
@@ -207,6 +207,8 @@ def embed(documents, encoder, tokenizer, device, fp16, amp=None):
                     embeddings = encoder(
                         input_ids.to(device=device), return_dict=True
                     ).pooler_output
+            # Embeddings need to be float32 for indexing
+            embeddings = embeddings.float()
         else:
             try:
                 input_ids = tokenizer(
@@ -260,10 +262,7 @@ def get_evaluation_passage_dataset(
         if isinstance(eval_data, str):
             if eval_data.endswith(".json"):
                 passage_dataset = load_dataset(
-                    os.path.join(
-                        os.path.dirname(os.path.abspath(__file__)),
-                        "retrieval_dataset_loading_script",
-                    ),
+                    "retrieval_dataset_loading_script",
                     data_files=eval_data,
                     hard_negatives=args.hard_negatives,
                     include_title=args.include_title,
@@ -333,11 +332,14 @@ def get_evaluation_passage_dataset(
         if additional_passages is not None:
             if args.fp16:
                 from torch.cuda import amp
+            else:
+                amp = None
             if isinstance(additional_passages, str):
                 if os.path.isdir(additional_passages):
                     # To be used if you want to reuse the embeddings from a previous eval but
                     # with new eval data
                     additional_passages = load_from_disk(additional_passages)
+                    encoder = encoder.to(device)
                     passage_dataset = passage_dataset.map(
                         partial(
                             embed,
@@ -434,6 +436,9 @@ def get_evaluation_passage_dataset(
             logger.info("Generating embeddings for evaluation passages")
             if args.fp16:
                 from torch.cuda import amp
+            else:
+                amp = None
+            encoder = encoder.to(device)
             passage_dataset = passage_dataset.map(
                 partial(
                     embed,
@@ -552,7 +557,10 @@ def get_prediction_passage_dataset(
 
         if args.fp16:
             from torch.cuda import amp
+        else:
+            amp = None
 
+        encoder = encoder.to(device)
         prediction_passages_dataset = prediction_passages_dataset.map(
             partial(
                 embed,
@@ -575,18 +583,29 @@ def get_prediction_passage_dataset(
             prediction_passages_dataset.save_to_disk(output_dataset_directory)
 
     index_added = False
+    index_path = None
     if isinstance(prediction_passages, str):
         index_path = os.path.join(prediction_passages, "hf_dataset_index.faiss")
         if os.path.isfile(index_path):
+            logger.info(f"Loaded FAISS index from {index_path}")
             prediction_passages_dataset.load_faiss_index("embeddings", index_path)
             index_added = True
 
     if not index_added:
         logger.info("Adding FAISS index to prediction passages")
-        index = faiss.IndexHNSWFlat(
-            args.faiss_d, args.faiss_m, faiss.METRIC_INNER_PRODUCT
+        if args.faiss_index_type == "IndexHNSWFlat":
+            index = faiss.IndexHNSWFlat(
+                args.faiss_d, args.faiss_m, faiss.METRIC_INNER_PRODUCT
+            )
+        elif args.faiss_index_type == "IndexFlatIP":
+            index = faiss.IndexFlatIP(args.faiss_d)
+        else:
+            raise ValueError(
+                f"Unsupported FAISS index type {args.faiss_index_type}. Choose from IndexHNSWFlat and IndexFlatIP"
+            )
+        prediction_passages_dataset.add_faiss_index(
+            "embeddings", custom_index=index, faiss_verbose=True
         )
-        prediction_passages_dataset.add_faiss_index("embeddings", custom_index=index)
         logger.info("Adding FAISS index to prediction passages completed")
         if args.save_passage_dataset:
             output_dataset_directory = os.path.join(

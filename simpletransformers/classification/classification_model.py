@@ -43,7 +43,8 @@ from transformers.optimization import (
     get_cosine_with_hard_restarts_schedule_with_warmup,
     get_polynomial_decay_schedule_with_warmup,
 )
-from transformers.optimization import AdamW, Adafactor
+from torch.optim import AdamW
+from transformers.optimization import Adafactor
 from transformers import (
     AlbertConfig,
     AlbertTokenizer,
@@ -80,6 +81,9 @@ from transformers import (
     LayoutLMConfig,
     LayoutLMTokenizerFast,
     LayoutLMForSequenceClassification,
+    LayoutLMv2Config,
+    LayoutLMv2TokenizerFast,
+    LayoutLMv2ForSequenceClassification,
     LongformerConfig,
     LongformerTokenizerFast,
     LongformerForSequenceClassification,
@@ -89,6 +93,12 @@ from transformers import (
     MobileBertConfig,
     MobileBertTokenizerFast,
     MobileBertForSequenceClassification,
+    NystromformerConfig,
+    # NystromformerTokenizer,
+    NystromformerForSequenceClassification,
+    RemBertConfig,
+    RemBertTokenizerFast,
+    RemBertForSequenceClassification,
     RobertaConfig,
     RobertaTokenizerFast,
     RobertaForSequenceClassification,
@@ -142,6 +152,7 @@ MODELS_WITH_EXTRA_SEP_TOKEN = [
     "xlmroberta",
     "longformer",
     "mpnet",
+    "nystromformer",
 ]
 
 MODELS_WITH_ADD_PREFIX_SPACE = [
@@ -150,6 +161,7 @@ MODELS_WITH_ADD_PREFIX_SPACE = [
     "xlmroberta",
     "longformer",
     "mpnet",
+    "nystromformer",
 ]
 
 MODELS_WITHOUT_SLIDING_WINDOW_SUPPORT = ["squeezebert"]
@@ -243,6 +255,11 @@ class ClassificationModel:
                 LayoutLMForSequenceClassification,
                 LayoutLMTokenizerFast,
             ),
+            "layoutlmv2": (
+                LayoutLMv2Config,
+                LayoutLMv2ForSequenceClassification,
+                LayoutLMv2TokenizerFast,
+            ),
             "longformer": (
                 LongformerConfig,
                 LongformerForSequenceClassification,
@@ -254,6 +271,16 @@ class ClassificationModel:
                 MobileBertTokenizerFast,
             ),
             "mpnet": (MPNetConfig, MPNetForSequenceClassification, MPNetTokenizerFast),
+            "nystromformer": (
+                NystromformerConfig,
+                NystromformerForSequenceClassification,
+                BigBirdTokenizer,
+            ),
+            "rembert": (
+                RemBertConfig,
+                RemBertForSequenceClassification,
+                RemBertTokenizerFast,
+            ),
             "roberta": (
                 RobertaConfig,
                 RobertaForSequenceClassification,
@@ -306,7 +333,7 @@ class ClassificationModel:
             if self.args.n_gpu > 0:
                 torch.cuda.manual_seed_all(self.args.manual_seed)
 
-        if self.args.labels_list:
+        if self.args.labels_list and not self.args.lazy_loading:
             if num_labels:
                 assert num_labels == len(self.args.labels_list)
             if self.args.labels_map:
@@ -530,7 +557,7 @@ class ClassificationModel:
                 raise ValueError(
                     "HuggingFace Datasets cannot be used with sliding window."
                 )
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 raise NotImplementedError(
                     "HuggingFace Datasets support is not implemented for LayoutLM models"
                 )
@@ -540,7 +567,7 @@ class ClassificationModel:
         elif isinstance(train_df, str) and self.args.lazy_loading:
             if self.args.sliding_window:
                 raise ValueError("Lazy loading cannot be used with sliding window.")
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 raise NotImplementedError(
                     "Lazy loading is not implemented for LayoutLM models"
                 )
@@ -553,7 +580,7 @@ class ClassificationModel:
                     "Input must be given as a path to a file when using lazy loading"
                 )
             if "text" in train_df.columns and "labels" in train_df.columns:
-                if self.args.model_type == "layoutlm":
+                if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                     train_examples = [
                         InputExample(i, text, None, label, x0, y0, x1, y1)
                         for i, (text, label, x0, y0, x1, y1) in enumerate(
@@ -573,7 +600,7 @@ class ClassificationModel:
                         train_df["labels"].tolist(),
                     )
             elif "text_a" in train_df.columns and "text_b" in train_df.columns:
-                if self.args.model_type == "layoutlm":
+                if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                     raise ValueError("LayoutLM cannot be used with sentence-pair tasks")
                 else:
                     train_examples = (
@@ -723,6 +750,7 @@ class ClassificationModel:
                 optimizer_grouped_parameters,
                 lr=args.learning_rate,
                 eps=args.adam_epsilon,
+                betas=args.adam_betas,
             )
         elif args.optimizer == "Adafactor":
             optimizer = Adafactor(
@@ -1372,7 +1400,7 @@ class ClassificationModel:
                 raise ValueError(
                     "HuggingFace Datasets cannot be used with sliding window."
                 )
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 raise NotImplementedError(
                     "HuggingFace Datasets support is not implemented for LayoutLM models"
                 )
@@ -1381,7 +1409,7 @@ class ClassificationModel:
             )
             eval_examples = None
         elif isinstance(eval_df, str) and self.args.lazy_loading:
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 raise NotImplementedError(
                     "Lazy loading is not implemented for LayoutLM models"
                 )
@@ -1394,7 +1422,7 @@ class ClassificationModel:
                 )
 
             if "text" in eval_df.columns and "labels" in eval_df.columns:
-                if self.args.model_type == "layoutlm":
+                if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                     eval_examples = [
                         InputExample(i, text, None, label, x0, y0, x1, y1)
                         for i, (text, label, x0, y0, x1, y1) in enumerate(
@@ -1414,7 +1442,7 @@ class ClassificationModel:
                         eval_df["labels"].tolist(),
                     )
             elif "text_a" in eval_df.columns and "text_b" in eval_df.columns:
-                if self.args.model_type == "layoutlm":
+                if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                     raise ValueError("LayoutLM cannot be used with sentence-pair tasks")
                 else:
                     eval_examples = (
@@ -1658,7 +1686,7 @@ class ClassificationModel:
             os.makedirs(self.args.cache_dir, exist_ok=True)
 
         mode = "dev" if evaluate else "train"
-        if args.sliding_window or self.args.model_type == "layoutlm":
+        if args.sliding_window or self.args.model_type in ["layoutlm", "layoutlmv2"]:
             cached_features_file = os.path.join(
                 args.cache_dir,
                 "cached_{}_{}_{}_{}_{}".format(
@@ -1685,7 +1713,7 @@ class ClassificationModel:
                     if args.sliding_window:
                         logger.info(" Sliding window enabled")
 
-                if self.args.model_type != "layoutlm":
+                if self.args.model_type not in ["layoutlm", "layoutlmv2"]:
                     if len(examples) == 3:
                         examples = [
                             InputExample(i, text_a, text_b, label)
@@ -1764,7 +1792,7 @@ class ClassificationModel:
                 [f.segment_ids for f in features], dtype=torch.long
             )
 
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 all_bboxes = torch.tensor(
                     [f.bboxes for f in features], dtype=torch.long
                 )
@@ -1778,7 +1806,7 @@ class ClassificationModel:
                     [f.label_id for f in features], dtype=torch.float
                 )
 
-            if self.args.model_type == "layoutlm":
+            if self.args.model_type in ["layoutlm", "layoutlmv2"]:
                 dataset = TensorDataset(
                     all_input_ids,
                     all_input_mask,
@@ -1862,6 +1890,33 @@ class ClassificationModel:
             mismatched = labels != preds
 
         if eval_examples:
+            if not isinstance(eval_examples[0], InputExample):
+                if len(eval_examples) == 2:
+                    # Single sentence task
+                    eval_examples = [
+                        InputExample(
+                            guid=i,
+                            text_a=example,
+                            text_b=None,
+                            label=label,
+                        )
+                        for i, (example, label) in enumerate(
+                            zip(eval_examples[0], eval_examples[1])
+                        )
+                    ]
+                elif len(eval_examples) == 3:
+                    # Sentence pair task
+                    eval_examples = [
+                        InputExample(
+                            guid=i,
+                            text_a=example_a,
+                            text_b=example_b,
+                            label=label,
+                        )
+                        for i, (example_a, example_b, label) in enumerate(
+                            zip(eval_examples[0], eval_examples[1], eval_examples[2])
+                        )
+                    ]
             wrong = [i for (i, v) in zip(eval_examples, mismatched) if v.any()]
         else:
             wrong = ["NA"]
@@ -1912,6 +1967,13 @@ class ClassificationModel:
 
         Args:
             to_predict: A python list of text (str) to be sent to the model for prediction.
+                        For layoutlm and layoutlmv2 model types, this should be a list of lists:
+                        [
+                            [text1, [x0], [y0], [x1], [y1]],
+                            [text2, [x0], [y0], [x1], [y1]],
+                            ...
+                            [textn, [x0], [y0], [x1], [y1]]
+                        ]
 
         Returns:
             preds: A python list of the predictions (0 or 1) for each text.
@@ -1934,7 +1996,13 @@ class ClassificationModel:
                 to_predict, return_tensors="pt", padding=True, truncation=True
             )
 
-            if self.args.model_type in ["bert", "xlnet", "albert", "layoutlm"]:
+            if self.args.model_type in [
+                "bert",
+                "xlnet",
+                "albert",
+                "layoutlm",
+                "layoutlmv2",
+            ]:
                 for i, (input_ids, attention_mask, token_type_ids) in enumerate(
                     zip(
                         model_inputs["input_ids"],
@@ -1990,10 +2058,16 @@ class ClassificationModel:
                 model = torch.nn.DataParallel(model)
 
             if isinstance(to_predict[0], list):
-                eval_examples = (
-                    *zip(*to_predict),
-                    [dummy_label for i in range(len(to_predict))],
-                )
+                if self.args.model_type in ["layoutlm", "layoutlmv2"]:
+                    eval_examples = [
+                        InputExample(i, text, None, dummy_label, x0, y0, x1, y1)
+                        for i, (text, x0, y0, x1, y1) in enumerate(to_predict)
+                    ]
+                else:
+                    eval_examples = (
+                        *zip(*to_predict),
+                        [dummy_label for i in range(len(to_predict))],
+                    )
             else:
                 eval_examples = (
                     to_predict,
@@ -2276,7 +2350,7 @@ class ClassificationModel:
     def _get_inputs_dict(self, batch, no_hf=False):
         if self.args.use_hf_datasets and not no_hf:
             return {key: value.to(self.device) for key, value in batch.items()}
-        if isinstance(batch[0], dict):
+        if isinstance(batch[0], dict) or isinstance(batch[0].data, dict):
             inputs = {
                 key: value.squeeze(1).to(self.device) for key, value in batch[0].items()
             }
@@ -2294,11 +2368,12 @@ class ClassificationModel:
             if self.args.model_type != "distilbert":
                 inputs["token_type_ids"] = (
                     batch[2]
-                    if self.args.model_type in ["bert", "xlnet", "albert", "layoutlm"]
+                    if self.args.model_type
+                    in ["bert", "xlnet", "albert", "layoutlm", "layoutlmv2"]
                     else None
                 )
 
-        if self.args.model_type == "layoutlm":
+        if self.args.model_type in ["layoutlm", "layoutlmv2"]:
             inputs["bbox"] = batch[4]
 
         return inputs

@@ -31,7 +31,8 @@ from transformers.optimization import (
     get_cosine_with_hard_restarts_schedule_with_warmup,
     get_polynomial_decay_schedule_with_warmup,
 )
-from transformers.optimization import AdamW, Adafactor
+from torch.optim import AdamW
+from transformers.optimization import Adafactor
 from transformers import (
     AlbertConfig,
     AlbertForQuestionAnswering,
@@ -132,7 +133,7 @@ class QuestionAnsweringModel:
 
         MODEL_CLASSES = {
             "albert": (AlbertConfig, AlbertForQuestionAnswering, AlbertTokenizer),
-            "auto": (AutoConfig, AutoTokenizer, AutoModelForQuestionAnswering),
+            "auto": (AutoConfig, AutoModelForQuestionAnswering, AutoTokenizer),
             "bart": (BartConfig, BartForQuestionAnswering, BartTokenizer),
             "bert": (BertConfig, BertForQuestionAnswering, BertTokenizer),
             "camembert": (
@@ -568,6 +569,7 @@ class QuestionAnsweringModel:
                 optimizer_grouped_parameters,
                 lr=args.learning_rate,
                 eps=args.adam_epsilon,
+                betas=args.adam_betas,
             )
         elif args.optimizer == "Adafactor":
             optimizer = Adafactor(
@@ -651,7 +653,7 @@ class QuestionAnsweringModel:
 
         if args.model_name and os.path.exists(args.model_name):
             try:
-                # set global_step to gobal_step of last saved checkpoint from model path
+                # set global_step to global_step of last saved checkpoint from model path
                 checkpoint_suffix = args.model_name.split("/")[-1].split("-")
                 if len(checkpoint_suffix) > 2:
                     checkpoint_suffix = checkpoint_suffix[1]
